@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
+from torch.nn.utils.rnn import pack_sequence
 
 class WordCompletionDataset(Dataset):
     def __init__(self, filepath):
@@ -55,9 +56,22 @@ class WordCompletionDataset(Dataset):
 
 def collate_fn(batch):
     inputs, outputs = zip(*batch)
-    return inputs, outputs
 
-# Assuming your dataset class and collate_fn are already defined, and your class instance is `self`
+    
+
+    packed_inputs = [
+        i if isinstance(i, torch.Tensor) else torch.tensor(i, dtype=torch.float32)
+        for i in inputs
+    ]
+
+    outputs_tensor = torch.stack([
+        o if isinstance(o, torch.Tensor) else torch.tensor(o, dtype=torch.float32)
+        for o in outputs
+    ])
+
+    return packed_inputs, outputs_tensor
+
+
 
 def return_dataloader():
     dataset = WordCompletionDataset("small_strip.txt")
@@ -65,21 +79,16 @@ def return_dataloader():
     print("Dataset Loaded Successfully")
     return dataset, dataloader
 
-# for inputs, outputs in dataloader:
-#     print(f"Inputs shape: {len(inputs)}, {len(inputs[0])}, {len(inputs[0][0])}")   # e.g. (64, 26, seq_len)
-#     print(f"Outputs shape: {len(outputs)}, {len(outputs[0])}") # e.g. (64, 26)
+dataset = WordCompletionDataset("small_strip.txt")
+dataloader = DataLoader(dataset, batch_size=64, shuffle=False, collate_fn=collate_fn)
+for inputs, outputs in dataloader:
+    # inputs: list of 26 PackedSequence objects (one per feature)
+    # outputs: shape (batch_size, 26)
 
-#     # Decode first batch sample (index 0)
-#     first_input_matrix = inputs[1].numpy()  # (26, seq_len)
-#     first_output_array = outputs[1].numpy() # (26,)
+    print(f"Inputs shape: {len(inputs)}, {inputs[0].shape}")
+    print(f"Outputs shape: {outputs.shape}")  # (batch_size, 26)
 
-#     # Transpose input to (26, seq_len) if needed (depends on your encode shape)
-#     # For your input_encode, shape was (26, len(word)), so inputs should be (batch, 26, seq_len)
-#     decoded_input = dataset.input_decode(first_input_matrix)
-#     decoded_output = dataset.output_decode(first_output_array)
+    break  # Only process first batch
 
-#     print(f"Decoded input (sample 0): {decoded_input}")
-#     print(f"Decoded output (sample 0): {decoded_output}")
 
-#     break  # Only first batch
 
