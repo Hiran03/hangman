@@ -39,9 +39,11 @@ class BiLSTMModel(nn.Module):
 
         out = self.fc(h_concat.unsqueeze(0))  
         
-        return out.squeeze(1)  
+        out = F.softmax(out, dim=1)
+        
+        return out
 
-def train(model, dataloader, optimizer, criterion, num_epochs, device):
+def train(model, dataloader, optimizer, num_epochs, device):
     model.to(device)
 
     for epoch in range(num_epochs):
@@ -60,7 +62,7 @@ def train(model, dataloader, optimizer, criterion, num_epochs, device):
             # Forward pass for each feature separately
             predictions = []
             for i in range(len(inputs)):  # assuming 26 features
-                packed_input = torch.tensor(inputs[i], dtype = torch.float32).to(device)
+                packed_input = inputs[i].detach().clone().float().to(device)
                 pred = model(packed_input)  # model should return (batch_size,) or (batch_size, 1)
                 predictions.append(pred)
 
@@ -68,7 +70,7 @@ def train(model, dataloader, optimizer, criterion, num_epochs, device):
             predictions = torch.stack(predictions, dim=1)
             predictions = predictions.squeeze(0)
             # Compute loss
-            loss = criterion(predictions.float(), outputs.float())
+            loss = -torch.sum(outputs.float() * torch.log(predictions.float()+ 1e-8))
 
             # Backward and optimize
             loss.backward()
@@ -93,6 +95,5 @@ if __name__ == "__main__":
 
     model = BiLSTMModel().to(device)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    criterion = nn.MSELoss()  
 
-    train(model, dataloader, optimizer, criterion, 3, 'cuda')
+    train(model, dataloader, optimizer, 3, 'cuda')
