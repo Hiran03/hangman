@@ -3,9 +3,9 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
-
+import torch.nn.functional as F
 from load_data import return_dataloader
-
+from load_data import WordCompletionDataset
 
 
 class BiLSTMModel(nn.Module):
@@ -22,7 +22,7 @@ class BiLSTMModel(nn.Module):
             bidirectional=True
         )
         
-        # Output layer: predicting one scalar per sequence
+        # Output layer: predicting vector per sequence
         self.fc = nn.Linear(hidden_size * 2, 26)
 
     def forward(self, packed_input):
@@ -37,9 +37,9 @@ class BiLSTMModel(nn.Module):
 
         h_concat = torch.cat((h_forward, h_backward), dim=0)  # (hidden_size*2,)
 
-        out = self.fc(h_concat.unsqueeze(0))  # add batch dim back: (1, hidden_size*2) -> (1,1)
-
-        return out.squeeze(1)  # returns tensor of shape (1,)
+        out = self.fc(h_concat.unsqueeze(0))  
+        
+        return out.squeeze(1)  
 
 def train(model, dataloader, optimizer, criterion, num_epochs, device):
     model.to(device)
@@ -68,7 +68,7 @@ def train(model, dataloader, optimizer, criterion, num_epochs, device):
             predictions = torch.stack(predictions, dim=1)
             predictions = predictions.squeeze(0)
             # Compute loss
-            loss = criterion(predictions, outputs)
+            loss = criterion(predictions.float(), outputs.float())
 
             # Backward and optimize
             loss.backward()
@@ -79,16 +79,20 @@ def train(model, dataloader, optimizer, criterion, num_epochs, device):
         avg_loss = running_loss / len(dataloader)
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}")
 
+    torch.save(model.state_dict(), "trained_model.pth")
+    
+
+if __name__ == "__main__":
 
 
-dataset, dataloader = return_dataloader()
-model = BiLSTMModel()
+    dataset, dataloader = return_dataloader()
+    model = BiLSTMModel()
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model = BiLSTMModel().to(device)
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
-criterion = nn.CrossEntropyLoss()  # expects targets as class indices
+    model = BiLSTMModel().to(device)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    criterion = nn.MSELoss()  
 
-train(model, dataloader, optimizer, criterion, 3, 'cuda')
+    train(model, dataloader, optimizer, criterion, 3, 'cuda')

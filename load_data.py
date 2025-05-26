@@ -8,8 +8,9 @@ class WordCompletionDataset(Dataset):
         self.samples = []
         with open(filepath, 'r') as f:
             for i, line in enumerate(f):
-                input_word, output_word = line.strip().split()
-                self.samples.append((input_word, output_word))
+                if (i % 100 == 0) :
+                    input_word, output_word = line.strip().split()
+                    self.samples.append((input_word, output_word))
 
         
     def input_encode(self, word):
@@ -79,16 +80,15 @@ def return_dataloader():
     print("Dataset Loaded Successfully")
     return dataset, dataloader
 
-dataset = WordCompletionDataset("small_strip.txt")
-dataloader = DataLoader(dataset, batch_size=64, shuffle=False, collate_fn=collate_fn)
-for inputs, outputs in dataloader:
-    # inputs: list of 26 PackedSequence objects (one per feature)
-    # outputs: shape (batch_size, 26)
+if __name__ == "main": 
+    dataset = WordCompletionDataset("small_strip.txt")
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=False, collate_fn=collate_fn)
+    for inputs, outputs in dataloader:
+        # inputs: list of 26 PackedSequence objects (one per feature)
+        # outputs: shape (batch_size, 26)
 
-    print(f"Inputs shape: {len(inputs)}, {inputs[0].shape}")
-    print(f"Outputs shape: {outputs.shape}")  # (batch_size, 26)
+        print(f"Inputs shape: {len(inputs)}, {inputs[0].shape}")
+        print(f"Outputs shape: {outputs.shape}")  # (batch_size, 26)
 
-    break  # Only process first batch
-
-
+        break  # Only process first batch
 
