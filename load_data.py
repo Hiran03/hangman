@@ -80,7 +80,7 @@ def return_dataloader():
     print("Dataset Loaded Successfully")
     return dataset, dataloader
 
-if __name__ == "main": 
+if __name__ == "__main__": 
     dataset = WordCompletionDataset("small_strip.txt")
     dataloader = DataLoader(dataset, batch_size=64, shuffle=False, collate_fn=collate_fn)
     for inputs, outputs in dataloader:

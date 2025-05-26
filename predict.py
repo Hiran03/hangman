@@ -1,16 +1,20 @@
 from model import BiLSTMModel
 import torch
 from load_data import WordCompletionDataset
-model = BiLSTMModel()
 
-model.load_state_dict(torch.load("trained_model.pth"))
-model.eval()  # if you're doing inference
+def make_predictions(word):
+    model = BiLSTMModel()
 
-predictions = model(torch.tensor(WordCompletionDataset("small_strip.txt").input_encode("h_ran"), dtype = torch.float32))
+    model.load_state_dict(torch.load("trained_model.pth"))
+    model.eval()  # if you're doing inference
 
-# predictions: torch.Tensor of shape (26, 1)
-sorted_indices = torch.argsort(predictions.squeeze(), descending=True).tolist()
-guesses = [chr(i + ord('a')) for i in sorted_indices]
+    predictions = model(torch.tensor(WordCompletionDataset("small_strip.txt").input_encode(word), dtype = torch.float32))
 
-print(predictions, sorted_indices)
-print(guesses)
+    # predictions: torch.Tensor of shape (26, 1)
+    sorted_indices = torch.argsort(predictions.squeeze(), descending=True).tolist()
+    guesses = [chr(i + ord('a')) for i in sorted_indices]
+
+    return guesses
+
+if __name__ == '__main__':
+    print(make_predictions('hi_an'))
