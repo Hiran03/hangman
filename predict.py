@@ -1,9 +1,9 @@
-from model import BiLSTMModel
+from transformer_model import TransformerModel
 import torch
 from load_data import WordCompletionDataset
 
 def make_predictions(word):
-    model = BiLSTMModel()
+    model = TransformerModel()
 
     model.load_state_dict(torch.load("trained_model.pth"))
     model.eval()  # if you're doing inference

@@ -8,53 +8,46 @@ from load_data import return_dataloader
 from load_data import WordCompletionDataset
 
 
-class BiLSTMModel(nn.Module):
-    def __init__(self, input_size=26, hidden_size=256, num_layers=2):
-        super(BiLSTMModel, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        
-        self.lstm = nn.LSTM(
-            input_size=input_size,        # 26 features per time step
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            batch_first=False,            # (seq_len, batch, input_size)
-            bidirectional=True
+class TransformerModel(nn.Module):
+    def __init__(self, input_size=26, d_model=128, nhead=4, num_layers=2, dim_feedforward=256):
+        super(TransformerModel, self).__init__()
+
+        self.embedding = nn.Linear(input_size, d_model)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=0.1,
+            batch_first=False  # (seq_len, batch, feature)
         )
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+
+        # FCN head
+        self.fc1 = nn.Linear(d_model, dim_feedforward)
+        self.norm1 = nn.LayerNorm(dim_feedforward)
+        self.fc2 = nn.Linear(dim_feedforward, 26)
+
+    def forward(self, input):
+        # input shape: (26, variable) → interpret as (feature, seq_len)
+        input = input.permute(1, 0)  # shape: (seq_len, feature)
+        input = input.unsqueeze(1)  # (seq_len, batch=1, feature)
         
-        # Output layer: predicting vector per sequence
-        self.fc1 = nn.Linear(hidden_size * 2, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, 26)
-        
-        self.layer_norm = nn.LayerNorm(hidden_size * 2)
-        self.norm1 = nn.LayerNorm(hidden_size)
+        x = self.embedding(input)   # (seq_len, batch=1, d_model)
+        x = self.transformer_encoder(x)  # (seq_len, batch=1, d_model)
 
+        # Aggregate sequence — e.g., mean over sequence length
+        x = x.mean(dim=0)  # (batch=1, d_model)
 
-    def forward(self, packed_input):
-        # packed_input: PackedSequence with feature dimension = 26
-        packed_input = packed_input.permute(1,0) # (variable , 26)
-        packed_output, (h_n, c_n) = self.lstm(packed_input)
-
-        # h_n shape: (num_layers * num_directions, batch=1, hidden_size)
-        # Remove batch dim with squeeze(1)
-        h_forward = h_n[-2, :]  # (hidden_size,)
-        h_backward = h_n[-1, :] # (hidden_size,)
-
-        h_concat = torch.cat((h_forward, h_backward), dim=0)  # (hidden_size*2,)
-        h_concat = self.layer_norm(h_concat)
-        
-        x = self.fc1(h_concat.unsqueeze(0)) # add .unsqueeze(0)
+        x = self.fc1(x)
         x = self.norm1(x)
         x = F.relu(x)
-        
 
         out = self.fc2(x)
-        
+        out = F.softmax(out, dim=1)
 
-        out = F.softmax(out, dim = 1)
-        
-        
-        return out
+        return out  # shape: (1, 26)
+
 
 def train(model, dataloader, optimizer, num_epochs, device):
     model.to(device)
@@ -105,13 +98,13 @@ if __name__ == "__main__":
 
 
     dataset, dataloader = return_dataloader()
-    model = BiLSTMModel()
+    model = TransformerModel()
 
     print("Number of trainable paramaters", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = BiLSTMModel().to(device)
+    model = TransformerModel().to(device)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     train(model, dataloader, optimizer, 1, 'cuda')

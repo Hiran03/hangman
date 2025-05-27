@@ -14,7 +14,7 @@ def permute (word, list, removed):
     return list
     
 
-filename = "words_250000_train.txt"
+filename = "words_25000_train.txt"
 
 
 with open(filename,'r') as f:
@@ -22,7 +22,7 @@ with open(filename,'r') as f:
     words = content.split()
     
 print(f"{len(words)} words")
-data = "strip.txt"
+data = "small_strip_25000.txt"
 batch_size = 100
 with open(data, 'w') as f:
     for batch in range(len(words)//batch_size): 

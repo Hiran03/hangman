@@ -8,7 +8,7 @@ class WordCompletionDataset(Dataset):
         self.samples = []
         with open(filepath, 'r') as f:
             for i, line in enumerate(f):
-                if (i % 100 == 0) :
+                # if (i % 1000 == 0) :
                     input_word, output_word = line.strip().split()
                     self.samples.append((input_word, output_word))
 
@@ -75,18 +75,18 @@ def collate_fn(batch):
 
 
 def return_dataloader():
-    dataset = WordCompletionDataset("small_strip.txt")
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=False, collate_fn=collate_fn)
+    dataset = WordCompletionDataset("small_strip_25000.txt")
+    dataloader = DataLoader(dataset, batch_size=32, shuffle=False, collate_fn=collate_fn)
     print("Dataset Loaded Successfully")
     return dataset, dataloader
 
 if __name__ == "__main__": 
     dataset = WordCompletionDataset("small_strip.txt")
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=False, collate_fn=collate_fn)
+    dataloader = DataLoader(dataset, batch_size=32, shuffle=False, collate_fn=collate_fn)
     for inputs, outputs in dataloader:
         # inputs: list of 26 PackedSequence objects (one per feature)
         # outputs: shape (batch_size, 26)
-
+        print(len(dataloader))
         print(f"Inputs shape: {len(inputs)}, {inputs[0].shape}")
         print(f"Outputs shape: {outputs.shape}")  # (batch_size, 26)
 
