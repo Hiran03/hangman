@@ -1,40 +1,33 @@
-def permute (word, list, removed):
-
-    for i in word :
+def permute(word, results, removed):
+    for i in word:
         if i != '_' and i not in removed:
             removed.append(i)
             stripped_word = word.copy()
-            for j in range(len(word)) :
-                if stripped_word[j] == i :
+            for j in range(len(stripped_word)):
+                if stripped_word[j] == i:
                     stripped_word[j] = '_'
-
-            list.append(stripped_word)
-            list = permute(stripped_word, list, removed.copy())
-    
-    return list
-    
-
-filename = "words_25000_train.txt"
+            results.append(stripped_word)
+            permute(stripped_word, results, removed.copy())
+    return results
 
 
-with open(filename,'r') as f:
-    content = f.read()
-    words = content.split()
-    
+filename = "words_250000_train.txt"
+
+with open(filename, 'r') as f:
+    words = f.read().split()
+
 print(f"{len(words)} words")
-data = "small_strip_25000.txt"
-batch_size = 100
-with open(data, 'w') as f:
-    for batch in range(len(words)//batch_size): 
-        for word in words[batch_size*batch:(batch_size + 1)*batch]:
-            chunk = ''
-            word_as_list = []
-            for i in word: word_as_list.append(i)
+
+output_file = "small_strip_250000.txt"
+batch_size = 1000
+
+with open(output_file, 'w') as f:
+    for batch in range(len(words) // batch_size):
+        for word in words[batch_size * batch : (batch + 1) * batch_size]:
+            word_as_list = list(word)
             strip_list = permute(word_as_list, [], [])
             for strip_word_as_list in strip_list:
-                strip_word = ''
-                for i in strip_word_as_list : strip_word += i
-                chunk += strip_word + " " + word + '\n'
-            f.write(chunk)
-            chunk = ''
-        print(f"{batch} batches complete")
+                strip_word = ''.join(strip_word_as_list)
+                f.write(f"{strip_word} {word}\n")
+        if (batch % 100 == 0) :
+            print(f"{batch + 1} batches complete of out {len(words) // batch_size}")

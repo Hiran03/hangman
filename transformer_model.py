@@ -27,7 +27,7 @@ class PositionalEncoding(nn.Module):
 
 
 class TransformerModel(nn.Module):
-    def __init__(self, input_size=27, d_model=64, nhead=2, num_layers=2, dim_feedforward=256, max_len=100):
+    def __init__(self, input_size=27, d_model=128, nhead=8, num_layers=4, dim_feedforward=256, max_len=100):
         super(TransformerModel, self).__init__()
 
         self.embedding = nn.Linear(input_size, d_model)
