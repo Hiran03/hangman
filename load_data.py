@@ -1,94 +1,105 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
-from torch.nn.utils.rnn import pack_sequence
+from torch.nn.utils.rnn import pad_sequence
 
 class WordCompletionDataset(Dataset):
     def __init__(self, filepath):
         self.samples = []
         with open(filepath, 'r') as f:
-            for i, line in enumerate(f):
-                # if (i % 1000 == 0) :
-                    input_word, output_word = line.strip().split()
-                    self.samples.append((input_word, output_word))
+            for line in f:
+                input_word, output_word = line.strip().split()
+                self.samples.append((input_word, output_word))
 
-        
     def input_encode(self, word):
-        matrix = np.zeros((26,len(word)))
-        for i in range(len(word)):
-            if word[i] != '_':
-                matrix[ord(word[i]) - ord('a')][i] = 1
+        matrix = np.zeros((27, len(word)))
+        for i, ch in enumerate(word):
+            if ch != '_':
+                matrix[ord(ch) - ord('a')][i] = 1
+            else:
+                matrix[26][i] = 1
+        return matrix
+
+    def output_encode(self, word):
+        matrix = np.zeros((27, len(word)))
+        for i, ch in enumerate(word):
+            matrix[ord(ch) - ord('a')][i] = 1
         return matrix
     def input_decode(self, matrix):
+        """
+        Decode a (27, seq_len) input matrix into a string with masked characters as '_'
+        """
         word = []
-        for i in range(matrix.shape[1]):  # iterate over columns (positions in the word)
+        matrix = np.array(matrix)  # Ensure it's a NumPy array
+        for i in range(matrix.shape[1]):  # iterate over positions
             col = matrix[:, i]
-            if np.sum(col) == 0:
-                word.append('_')  # no letter guessed at this position
+            idx = np.argmax(col)
+            if idx == 26:
+                word.append('_')
             else:
-                letter_index = np.argmax(col)
-                word.append(chr(letter_index + ord('a')))
+                word.append(chr(idx + ord('a')))
         return ''.join(word)
 
-        
-    def output_encode(self, input_word, output_word):
-        missing_letters = []
-        for i in range(len(input_word)) :
-            if input_word[i] == '_' :
-                missing_letters.append(output_word[i])
-        array = np.zeros(26)
-        for i in missing_letters:
-            array[ord(i) - ord('a')] += 1
-        array /= np.sum(array)
-        return array    
-    def output_decode(self, array):
-        indices = np.where(array > 0)[0]  # get indices where probability > 0
-        letters = [chr(i + ord('a')) for i in indices]
-        return letters
-        
+    def output_decode(self, matrix):
+        """
+        Decode a (27, seq_len) output matrix into a fully completed string
+        """
+        word = []
+        matrix = np.array(matrix)
+        for i in range(matrix.shape[1]):
+            col = matrix[:, i]
+            idx = np.argmax(col)
+            word.append(chr(idx + ord('a')))
+        return ''.join(word)
+    
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, idx):
         input_word, output_word = self.samples[idx]
         input_ids = self.input_encode(input_word)
-        output_ids = self.output_encode(input_word, output_word)
-        return torch.tensor(input_ids), torch.tensor(output_ids)
+        output_ids = self.output_encode(output_word)
+        return torch.tensor(input_ids, dtype=torch.float32), torch.tensor(output_ids, dtype=torch.float32)
 
 def collate_fn(batch):
     inputs, outputs = zip(*batch)
+    inputs = [i.permute(1, 0) for i in inputs]
+    outputs = [o.permute(1, 0) for o in outputs]
 
-    
+    padded_inputs = pad_sequence(inputs, batch_first=True)  # (batch, seq_len, 27)
+    padded_outputs = pad_sequence(outputs, batch_first=True)  # (batch, seq_len, 27)
 
-    packed_inputs = [
-        i if isinstance(i, torch.Tensor) else torch.tensor(i, dtype=torch.float32)
-        for i in inputs
-    ]
+    # Create padding mask where 1 means "not padding"
+    key_padding_mask = (padded_inputs.sum(-1) != 0)  # (batch, seq_len)
 
-    outputs_tensor = torch.stack([
-        o if isinstance(o, torch.Tensor) else torch.tensor(o, dtype=torch.float32)
-        for o in outputs
-    ])
-
-    return packed_inputs, outputs_tensor
-
-
+    return padded_inputs, padded_outputs, key_padding_mask
 
 def return_dataloader():
     dataset = WordCompletionDataset("small_strip_25000.txt")
-    dataloader = DataLoader(dataset, batch_size=32, shuffle=False, collate_fn=collate_fn)
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=True, collate_fn=collate_fn)
     print("Dataset Loaded Successfully")
     return dataset, dataloader
 
 if __name__ == "__main__": 
-    dataset = WordCompletionDataset("small_strip.txt")
-    dataloader = DataLoader(dataset, batch_size=32, shuffle=False, collate_fn=collate_fn)
-    for inputs, outputs in dataloader:
-        # inputs: list of 26 PackedSequence objects (one per feature)
-        # outputs: shape (batch_size, 26)
-        print(len(dataloader))
-        print(f"Inputs shape: {len(inputs)}, {inputs[0].shape}")
-        print(f"Outputs shape: {outputs.shape}")  # (batch_size, 26)
+    dataset = WordCompletionDataset("small_strip_25000.txt")
+    dataloader = DataLoader(dataset, batch_size=4, shuffle=True, collate_fn=collate_fn)
 
-        break  # Only process first batch
+    for inputs, outputs, _ in dataloader:
+        print(f"Number of batches: {len(dataloader)}")
+        print(f"Inputs batch shape: {inputs.shape}")   # (batch_size, seq_len, 27)
+        print(f"Outputs batch shape: {outputs.shape}") # (batch_size, seq_len, 27)
+
+        # Visualize one word pair
+        idx = 0  # first sample in batch
+        input_matrix = inputs[idx].permute(1, 0).numpy()   # (27, seq_len)
+        output_matrix = outputs[idx].permute(1, 0).numpy() # (27, seq_len)
+
+        input_word = dataset.input_decode(input_matrix)
+        output_word = dataset.output_decode(output_matrix)
+
+        print(f"\nSample {idx + 1}")
+        print(f"Masked Input Word:  {input_word}")
+        print(f"Ground Truth Word:  {output_word}")
+        
+        break;
 
