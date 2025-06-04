@@ -24,7 +24,7 @@ Using a custom Python script, all possible hangman states for each word were gen
   * `'_'` (masked character) → index 26
 * Data is loaded using a **PyTorch DataLoader** with:
 
-  * `batch_size = 64`
+  * `batch_size = 512`
   * Padding per batch to match sequence length using zero vectors
 
 ---
@@ -34,16 +34,16 @@ Using a custom Python script, all possible hangman states for each word were gen
 A standard **Transformer Encoder-Decoder** was used with the following parameters:
 
 * `input_size = 27`
-* `d_model = 128`
+* `d_model = 256`
 * `nhead = 8`
 * `num_layers = 4`
 * **Sinusoidal Positional Encoding**
 
 ###  Training Details
 
-* Only masked positions are considered in the **cross-entropy loss** for backpropagation
-* **Optimizer**: Adam (`lr = 1e-2`)
-* **Total parameters**: \~0.5M (\~2 MB)
+* **soft cross-entropy loss** for backpropagation
+* **Optimizer**: Adam (`lr = 1e-3`)
+* **Total parameters**: \~2M (\~10 MB)
 * **Epochs**: 1 (due to computational constraints)
 
 **Only training for 1 epoch limited model accuracy**
@@ -52,7 +52,8 @@ A standard **Transformer Encoder-Decoder** was used with the following parameter
 
 ##  Results & Conclusion
 
-* Final Accuracy on test data: **0.52**
+* Final Accuracy on practice runs (100 runs): **0.62**
+* Final Accuracy on recorded runs (338 runs): **0.553** [exhausted 662 on old models]
 * Baseline model accuracy: **0.18**
 * Challenge cutoff: **0.50** 
 
