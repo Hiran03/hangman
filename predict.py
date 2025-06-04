@@ -14,6 +14,8 @@ from transformer_model import TransformerModel
 from load_data import WordCompletionDataset
 
 def make_predictions(word, max_len=64):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     dataset = WordCompletionDataset("small_strip_25000.txt")
     encoded = dataset.input_encode(word)  # (27, seq_len)
     seq_len = encoded.shape[1]
@@ -23,13 +25,13 @@ def make_predictions(word, max_len=64):
         pad_width = ((0, 0), (0, max_len - seq_len))
         encoded = np.pad(encoded, pad_width, mode='constant', constant_values=0)
 
-    input_tensor = torch.tensor(encoded, dtype=torch.float32).T.unsqueeze(0)  # (1, max_len, 27)
+    input_tensor = torch.tensor(encoded, dtype=torch.float32).T.unsqueeze(0).to(device)  # (1, max_len, 27)
 
-    # Create src_key_padding_mask: True where position is padding
-    pad_mask = (input_tensor.sum(-1) == 0)  # (1, max_len)
+    # Create src_key_padding_mask: True where position is padding 
+    pad_mask = (input_tensor.sum(-1) == 0).to(input_tensor.device)  # (1, max_len)
 
-    model = TransformerModel()
-    model.load_state_dict(torch.load("trained_model.pth", map_location='cpu'))
+    model = TransformerModel().to(device)
+    model.load_state_dict(torch.load("trained_model.pth", map_location=device))
     model.eval()
 
     with torch.no_grad():
@@ -42,7 +44,6 @@ def make_predictions(word, max_len=64):
         print("No masked characters found in input.")
         return []
 
-    # Average logits across masked positions
     masked_preds = output[:, mask_indices].mean(dim=1)  # (27,)
     masked_preds[26] = -float('inf')  # prevent predicting [MASK]
 
@@ -53,5 +54,7 @@ def make_predictions(word, max_len=64):
 
 
 
+
 if __name__ == '__main__':
     print(make_predictions('hi_an'))
+    

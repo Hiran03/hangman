@@ -73,14 +73,14 @@ def collate_fn(batch):
 
 def return_dataloader():
     dataset = WordCompletionDataset("small_strip_250000.txt")
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=True, collate_fn=collate_fn)
+    dataloader = DataLoader(dataset, batch_size=512, shuffle=True, collate_fn=collate_fn)
     print("Dataset Loaded Successfully")
     return dataset, dataloader
 
 
 if __name__ == "__main__": 
     dataset = WordCompletionDataset("small_strip_250000.txt")
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=True, collate_fn=collate_fn)
+    dataloader = DataLoader(dataset, batch_size=256, shuffle=True, collate_fn=collate_fn)
 
     for inputs, outputs, _ in dataloader:
         print(f"Number of batches: {len(dataloader)}")
@@ -100,4 +100,3 @@ if __name__ == "__main__":
         print(f"Ground Truth Word:  {output_word}")
         
         break
-

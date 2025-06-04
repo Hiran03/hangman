@@ -27,12 +27,12 @@ class PositionalEncoding(nn.Module):
 
 
 class TransformerModel(nn.Module):
-    def __init__(self, input_size=27, d_model=128, nhead=8, num_layers=4, dim_feedforward=256, max_len=100):
+    def __init__(self, input_size=27, d_model=256, nhead=8, num_layers=4, dim_feedforward=512, max_len=100):
         super(TransformerModel, self).__init__()
 
         self.embedding = nn.Linear(input_size, d_model)
         self.pos_encoder = PositionalEncoding(d_model, max_len=max_len)
-
+        
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
             nhead=nhead,
@@ -46,9 +46,13 @@ class TransformerModel(nn.Module):
     def forward(self, x, src_key_padding_mask=None):
         x = self.embedding(x)
         x = self.pos_encoder(x)
+        
+        
         x = self.transformer_encoder(x, src_key_padding_mask=src_key_padding_mask)
-        output = self.output_layer(x)
-        return output  # (batch, seq_len, 27)
+        x = self.output_layer(x)
+        x = F.log_softmax(x, dim = -1)
+        
+        return x  # (batch, seq_len, 27)
 
 
 def train(model, dataloader, optimizer, num_epochs, device):
@@ -69,41 +73,53 @@ def train(model, dataloader, optimizer, num_epochs, device):
             optimizer.zero_grad()
             predictions = model(inputs, src_key_padding_mask=src_key_padding_mask)
 
-            # Apply softmax over last dimension
-            predictions = F.log_softmax(predictions, dim=-1)
 
-            # Focus loss only on masked positions
-            mask_token_index = 26
-            masked_positions = (inputs[:, :, mask_token_index] == 1).unsqueeze(-1)  # (batch, seq_len, 1)
+            # # Focus loss only on masked positions
+            # mask_token_index = 26
+            # masked_positions = (inputs[:, :, mask_token_index] == 1).unsqueeze(-1)  # (batch, seq_len, 1)
 
-            loss = -torch.sum(masked_positions * outputs * predictions)
-            loss = loss / masked_positions.sum().clamp(min=1)
-
+            # loss = -torch.sum(masked_positions * outputs * predictions)
+            # loss = loss / masked_positions.sum().clamp(min=1)
+            
+            loss = soft_cross_entropy_with_mask(predictions, outputs, pad_mask=src_key_padding_mask)
+            
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
             batch += 1
             if (batch % 100 == 0) :
                 print(f'Epoch: {epoch+1} - {batch} batch done of total {total_batches} batches...({batch/total_batches * 100 :.2f}%)')
-            if (batch % 1000 == 0):
+            if (batch % 10000 == 0):
                 torch.save(model.state_dict(), "trained_model.pth")
                 print("Model saved")
 
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(dataloader):.4f}")
 
     torch.save(model.state_dict(), "trained_model.pth")
-
+    
+def soft_cross_entropy_with_mask(predictions, targets, pad_mask):
+    """
+    predictions: (B, T, C) - log probabilities (log_softmax output)
+    targets:     (B, T, C) - target probability distributions
+    pad_mask:    (B, T)    - bool, True where padding
+    """
+    non_pad_mask = ~pad_mask  # True where not padding
+    loss_per_pos = -torch.sum(targets * predictions, dim=-1)  # (B, T)
+    masked_loss = loss_per_pos * non_pad_mask.float()         # zero out pad positions
+    return masked_loss.sum() / non_pad_mask.sum().clamp(min=1)
 
 if __name__ == "__main__":
     dataset, dataloader = return_dataloader()
-    model = TransformerModel()
-    print("Number of trainable parameters:", sum(p.numel() for p in model.parameters() if p.requires_grad))
+    
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = TransformerModel().to(device)
+    print("Number of trainable parameters:", sum(p.numel() for p in model.parameters() if p.requires_grad))
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     train(model, dataloader, optimizer, 1, device)
+
+
 
 
 # import torch
