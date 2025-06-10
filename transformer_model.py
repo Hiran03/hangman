@@ -90,12 +90,12 @@ def train(model, dataloader, optimizer, num_epochs, device):
             if (batch % 100 == 0) :
                 print(f'Epoch: {epoch+1} - {batch} batch done of total {total_batches} batches...({batch/total_batches * 100 :.2f}%)')
             if (batch % 10000 == 0):
-                torch.save(model.state_dict(), "trained_model.pth")
+                torch.save(model.state_dict(), "trained_model_newtoken.pth")
                 print("Model saved")
 
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(dataloader):.4f}")
 
-    torch.save(model.state_dict(), "trained_model.pth")
+    torch.save(model.state_dict(), "trained_model_newtoken.pth")
     
 def soft_cross_entropy_with_mask(predictions, targets, pad_mask):
     """
@@ -114,6 +114,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = TransformerModel().to(device)
+    model.load_state_dict(torch.load("trained_model.pth", map_location=device))
     print("Number of trainable parameters:", sum(p.numel() for p in model.parameters() if p.requires_grad))
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 

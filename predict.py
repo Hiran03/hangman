@@ -31,7 +31,7 @@ def make_predictions(word, max_len=64):
     pad_mask = (input_tensor.sum(-1) == 0).to(input_tensor.device)  # (1, max_len)
 
     model = TransformerModel().to(device)
-    model.load_state_dict(torch.load("trained_model.pth", map_location=device))
+    model.load_state_dict(torch.load("trained_model_newtoken.pth", map_location=device))
     model.eval()
 
     with torch.no_grad():
