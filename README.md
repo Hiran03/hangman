@@ -1,7 +1,6 @@
 # README
 
-
-To tackle the Hangman word prediction task, a **Transformer Encoder-Decoder** setup was deployed.
+To tackle the Hangman word prediction task, a **Transformer Model** setup was deployed and trained from scratch
 
 
 ##  Dataset
@@ -41,7 +40,7 @@ A standard **Transformer Encoder-Decoder** was used with the following parameter
 
 ###  Training Details
 
-* **soft cross-entropy loss** for backpropagation
+* **cross-entropy loss** for backpropagation
 * **Optimizer**: Adam (`lr = 1e-3`)
 * **Total parameters**: \~2M (\~10 MB)
 * **Epochs**: 1 (due to computational constraints)
@@ -53,13 +52,13 @@ A standard **Transformer Encoder-Decoder** was used with the following parameter
 ##  Results & Conclusion
 
 * Final Accuracy on practice runs (100 runs): **0.62**
-* Final Accuracy on recorded runs (338 runs): **0.553** [exhausted 662 on old models]
+* Final Accuracy on recorded runs (1000 runs): **0.56** 
 * Baseline model accuracy: **0.18**
 * Challenge cutoff: **0.50** 
 
 The model surpassed the baseline and cutoff even after **just 1 epoch** of training. Since transformers typically benefit from longer training or pretrained weights, performance is expected to improve with extended training.
 
-**Many successful transformer-based models are fine-tuned from large pretrained models.**
+**Many successful transformer-based models are fine-tuned from large pretrained models.** Since the challenge does not allow training on words that are not part of the original corpus, fine-tuning would mean defying this rule. Hence, finetuning option is entirely discarded.
 
 ---
 
@@ -79,5 +78,7 @@ Attached at end of the notebook
 ##  Declaration
 
 All logic and code were written by me. I used **LLMs for debugging** and referencing library syntax when needed.
+
+
 
 
