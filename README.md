@@ -47,6 +47,12 @@ A standard **Transformer Encoder-Decoder** was used with the following parameter
 
 **Only training for 1 epoch limited model accuracy**
 
+* The model outputs probability distribution over all letters at each index of the word
+* The probability distribution of all the masked positions were summed over and the letter 
+with max probability and not guessed before is declared as the new guess.
+
+###  Inference
+
 ---
 
 ##  Results & Conclusion
